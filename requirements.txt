@@ -1,2 +1,4 @@
 requests
+PyYAML
 azure-identity
+azure-storage-blob
