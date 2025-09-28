@@ -11,6 +11,10 @@ def main():
     config = load_config()
     workspace_id = os.getenv("WORKSPACE_ID") or config.get("workspace_id")
 
+    if not workspace_id:
+        logging.error("WORKSPACE_ID is not set in environment variables or config.")
+        exit(1)
+
     pipelines = [
         {"file": "pipelines/source_prep_pipeline.json", "name": "source_prep_pipeline"},
         {"file": "pipelines/incremental_pipeline.json", "name": "incremental_pipeline"}
