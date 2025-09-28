@@ -1,24 +1,31 @@
 import requests
 import os
-from utils import get_access_token, load_config
+import json
+import yaml
+
+from utils import get_access_token
 
 def deploy_pipeline(workspace_id: str, pipeline_file: str, pipeline_name: str,
                     pipeline_id: str = None, capacity_object_id: str = None):
     """
-    Deploy a pipeline JSON to Microsoft Fabric workspace.
+    Deploy a pipeline JSON/YAML to Microsoft Fabric workspace.
 
     Args:
         workspace_id: Fabric workspace object ID
-        pipeline_file: path to the pipeline JSON file
+        pipeline_file: path to the pipeline JSON/YAML file
         pipeline_name: friendly name for the pipeline
         pipeline_id: existing pipeline ID to update (optional)
         capacity_object_id: optional Fabric capacity object ID
     Returns:
         Response JSON from Fabric API
     """
-    # Load pipeline JSON
-    with open(pipeline_file, "r") as f:
-        pipeline_json = load_config(f)  # or json.load(f) if load_config is standard
+    # Load pipeline file (JSON or YAML)
+    if pipeline_file.endswith((".yaml", ".yml")):
+        with open(pipeline_file, "r") as f:
+            pipeline_json = yaml.safe_load(f)
+    else:
+        with open(pipeline_file, "r") as f:
+            pipeline_json = json.load(f)
 
     # Add optional pipeline metadata
     pipeline_json["name"] = pipeline_name
