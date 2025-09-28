@@ -14,19 +14,27 @@ pool:
   vmImage: "ubuntu-latest"
 
 steps:
+  # 1️⃣ Use Python
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: "3.x"
+      versionSpec: '3.x'
 
+  # 2️⃣ Install Python dependencies
   - script: |
       python -m pip install --upgrade pip
       pip install -r requirements.txt
-    displayName: "Install Python dependencies"
+    displayName: 'Install Python dependencies'
 
-  # Orchestrator deploys, runs, and monitors both pipelines in order
+  # 3️⃣ Verify Key Vault secrets are in environment
   - script: |
-      python scripts/orchestrator.py
-    displayName: "Deploy, run, and monitor pipelines"
+      echo "ClientID set: ${ClientID:+Yes}"
+      echo "TenantID set: ${TenantID:+Yes}"
+      echo "ClientSecret set: ${ClientSecret:+Yes}"  # do not print actual value
+    displayName: 'Verify secrets are in environment'
+
+  # 4️⃣ Run orchestrator
+  - script: python scripts/orchestrator.py
+    displayName: 'Deploy, run, and monitor pipelines'
 
   # Optional: Notify on failure
   - task: PowerShell@2
