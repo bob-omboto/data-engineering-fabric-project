@@ -14,7 +14,7 @@ def main():
         raise ValueError("WORKSPACE_ID environment variable is missing.")
 
     # Load pipelines configuration
-    config = load_config_file("configs/pipelines.yaml")
+    config = load_config_file("configs/pipelines.yml")
     pipelines = config.get("pipelines", [])
 
     if not pipelines:
