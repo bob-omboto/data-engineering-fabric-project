@@ -1,41 +1,38 @@
 import os
-import logging
-from utils import load_config
+import yaml
 from deploy import deploy_pipeline
-from run import run_pipeline
-from monitor import monitor_pipeline
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+def load_config_file(path: str):
+    """Load YAML configuration."""
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
 
 def main():
-    config = load_config()
-    workspace_id = os.getenv("WORKSPACE_ID") or config.get("workspace_id")
-
+    # Workspace ID from environment
+    workspace_id = os.getenv("WORKSPACE_ID")
     if not workspace_id:
-        logging.error("WORKSPACE_ID is not set in environment variables or config.")
-        exit(1)
+        raise ValueError("WORKSPACE_ID environment variable is missing.")
 
-    pipelines = [
-        {"file": "pipelines/source_prep_pipeline.json", "name": "source_prep_pipeline"},
-        {"file": "pipelines/incremental_pipeline.json", "name": "incremental_pipeline"}
-    ]
+    # Load pipelines configuration
+    config = load_config_file("configs/pipelines.yaml")
+    pipelines = config.get("pipelines", [])
+
+    if not pipelines:
+        print("No pipelines defined in configuration.")
+        return
 
     for pipeline in pipelines:
-        logging.info(f"Deploying pipeline: {pipeline['name']}")
-        deploy_resp = deploy_pipeline(workspace_id, pipeline["file"], pipeline_name=pipeline["name"])
-        pipeline_id = deploy_resp.get("id")
-
-        logging.info(f"Running pipeline: {pipeline['name']}")
-        run_resp = run_pipeline(workspace_id, pipeline_id)
-        run_id = run_resp.get("id")
-
-        logging.info(f"Monitoring pipeline: {pipeline['name']}")
-        success = monitor_pipeline(workspace_id, pipeline_id, run_id)
-        if not success:
-            logging.error(f"Pipeline {pipeline['name']} failed. Halting orchestrator.")
-            exit(1)
-
-    logging.info("All pipelines completed successfully ✅")
+        try:
+            print(f"Deploying pipeline: {pipeline['name']}")
+            deploy_pipeline(
+                workspace_id=workspace_id,
+                pipeline_file=pipeline["file"],
+                pipeline_name=pipeline["name"],
+                pipeline_id=pipeline.get("pipeline_id"),
+                capacity_object_id=pipeline.get("capacity_object_id")
+            )
+        except Exception as e:
+            print(f"Failed to deploy pipeline {pipeline['name']}: {str(e)}")
 
 if __name__ == "__main__":
     main()

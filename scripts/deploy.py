@@ -1,35 +1,55 @@
-import sys
-import logging
-from utils import api_post, encode_json_file, FABRIC_BASE_URL, load_config
+import requests
+import os
+from utils import get_access_token, load_config
 
-config = load_config()
+def deploy_pipeline(workspace_id: str, pipeline_file: str, pipeline_name: str,
+                    pipeline_id: str = None, capacity_object_id: str = None):
+    """
+    Deploy a pipeline JSON to Microsoft Fabric workspace.
 
-def deploy_pipeline(workspace_id, json_path, pipeline_name=None):
-    pipeline_name = pipeline_name or config.get("pipeline_name", "MyPipeline")
-    payload = {
-        "displayName": pipeline_name,
-        "type": "DataPipeline",
-        "definition": {
-            "format": "json",
-            "parts": [
-                {
-                    "path": "pipeline.json",
-                    "payload": encode_json_file(json_path)
-                }
-            ]
-        }
+    Args:
+        workspace_id: Fabric workspace object ID
+        pipeline_file: path to the pipeline JSON file
+        pipeline_name: friendly name for the pipeline
+        pipeline_id: existing pipeline ID to update (optional)
+        capacity_object_id: optional Fabric capacity object ID
+    Returns:
+        Response JSON from Fabric API
+    """
+    # Load pipeline JSON
+    with open(pipeline_file, "r") as f:
+        pipeline_json = load_config(f)  # or json.load(f) if load_config is standard
+
+    # Add optional pipeline metadata
+    pipeline_json["name"] = pipeline_name
+    if capacity_object_id:
+        pipeline_json["capacityObjectId"] = capacity_object_id
+
+    # Get Fabric access token
+    token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
-    url = f"{FABRIC_BASE_URL}/workspaces/{workspace_id}/items/import"
-    response = api_post(url, payload)
-    pipeline_id = response.get("id")
 
-    logging.info(f"✅ Pipeline deployed: {pipeline_id}")
-    # Export as Azure DevOps variable
-    print(f"##vso[task.setvariable variable=PIPELINE_ID]{pipeline_id}")
-    return response
+    # Determine endpoint
+    if pipeline_id:
+        # Update existing pipeline
+        url = f"https://api.fabric.microsoft.com/v1/workspaces/{workspace_id}/pipelines/{pipeline_id}"
+        method = requests.put
+    else:
+        # Create new pipeline
+        url = f"https://api.fabric.microsoft.com/v1/workspaces/{workspace_id}/pipelines"
+        method = requests.post
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python deploy.py <workspace_id> <pipeline.json>")
-        sys.exit(1)
-    deploy_pipeline(sys.argv[1], sys.argv[2])
+    # Send request
+    response = method(url, headers=headers, json=pipeline_json)
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        print(f"ERROR: Failed to deploy pipeline {pipeline_name}. Status: {response.status_code}")
+        print(response.text)
+        raise e
+
+    print(f"Pipeline {pipeline_name} deployed successfully.")
+    return response.json()
