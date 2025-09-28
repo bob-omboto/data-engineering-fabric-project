@@ -25,16 +25,14 @@ steps:
       pip install -r requirements.txt
     displayName: 'Install Python dependencies'
 
-  # 3️⃣ Verify Key Vault secrets are in environment
-  - script: |
-      echo "ClientID set: ${ClientID:+Yes}"
-      echo "TenantID set: ${TenantID:+Yes}"
-      echo "ClientSecret set: ${ClientSecret:+Yes}"  # do not print actual value
-    displayName: 'Verify secrets are in environment'
-
-  # 4️⃣ Run orchestrator
+  # 3️⃣ Run orchestrator with secrets injected as environment variables
   - script: python scripts/orchestrator.py
     displayName: 'Deploy, run, and monitor pipelines'
+    env:
+      ClientID: $(ClientID)
+      ClientSecret: $(ClientSecret)
+      TenantID: $(TenantID)
+      WORKSPACE_ID: $(WORKSPACE_ID)
 
   # Optional: Notify on failure
   - task: PowerShell@2
