@@ -1,0 +1,50 @@
+trigger:
+  branches:
+    include:
+      - main  # Trigger pipeline on commits to main branch
+
+variables:
+  - group: FabricSecrets        # Contains AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, TENANT_ID
+  - name: AZURE_STORAGE_CONN     # Azure Blob Storage connection string
+    value: $(STORAGE_CONN)
+  - name: WORKSPACE_ID           # Fabric workspace ID
+    value: "<your-fabric-workspace-id>"
+
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  # Step 1: Use Python 3.x
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: "3.x"
+
+  # Step 2: Install dependencies
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    displayName: "Install Python dependencies"
+
+  # Step 3: Deploy Fabric pipeline
+  - script: |
+      python scripts/deploy.py $(WORKSPACE_ID) pipelines/my_pipeline.json
+    displayName: "Deploy Fabric pipeline"
+
+  # Step 4: Run pipeline (PIPELINE_ID set dynamically by deploy.py)
+  - script: |
+      python scripts/run.py $(WORKSPACE_ID) $(PIPELINE_ID)
+    displayName: "Run Fabric pipeline"
+
+  # Step 5: Monitor run and archive metadata (RUN_ID set dynamically by run.py)
+  - script: |
+      python scripts/monitor.py $(WORKSPACE_ID) $(PIPELINE_ID) $(RUN_ID)
+    displayName: "Monitor Fabric pipeline run"
+
+  # Step 6 (Optional): Notify on failure
+  - task: PowerShell@2
+    displayName: "Notify on failure"
+    condition: failed()
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host "Pipeline run failed. Check logs and Fabric workspace for details."

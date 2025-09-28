@@ -1,0 +1,5 @@
+workspace_id: "b91bc81a-0c59-4fe4-ad98-be5f2f5c2716"
+pipeline_name: "project_Pipeline"
+retry_attempts: 5
+poll_interval_seconds: 15
+timeout_minutes: 60
